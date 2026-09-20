@@ -1,7 +1,9 @@
+import uuid
 from fastapi import FastAPI, File, UploadFile
 import pandas as pd
 
 app = FastAPI()
+storage = {}
 
 # ALLOWED_EXTENSIONS = {".csv"} commented out because it is not used in the current code
 
@@ -12,8 +14,11 @@ def read_root():
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
     df = pd.read_csv(file.file)
+    file_id = str(uuid.uuid4())
+    storage[file_id] = df
     rows, columns = df.shape
     file.file.close()
-    return {"filename": file.filename, "rows": rows, "columns": columns}
+    return {"file_id": file_id, "rows": rows, "columns": columns}
+
 
     
