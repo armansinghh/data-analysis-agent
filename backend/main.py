@@ -20,5 +20,7 @@ def upload_file(file: UploadFile = File(...)):
     file.file.close()
     return {"file_id": file_id, "rows": rows, "columns": columns}
 
-
-    
+@app.post("/query/{file_id}")
+def query_data(file_id: str, question: str):
+    df = storage[file_id]
+    return {"question": question, "columns": list(df.columns)}
