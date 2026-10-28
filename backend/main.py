@@ -1,8 +1,15 @@
 import uuid
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 storage = {}
 
 # ALLOWED_EXTENSIONS = {".csv"} commented out because it is not used in the current code
