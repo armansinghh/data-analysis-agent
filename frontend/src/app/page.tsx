@@ -11,7 +11,7 @@ export default function Home() {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append("file", file); // "file" matches your FastAPI param name
+    formData.append("file", file);
 
     const res = await fetch("http://localhost:8000/upload", {
       method: "POST",
