@@ -4,7 +4,8 @@ import { Suspense, useState } from "react";
 import { useParams } from "next/navigation";
 import { LuCpu, LuFileSpreadsheet, LuArrowUp } from "react-icons/lu";
 
-type Message = { role: "user" | "assistant"; text: string };
+// CHANGED: added optional chart
+type Message = { role: "user" | "assistant"; text: string; chart?: string };
 
 function Chat() {
   const { file_id } = useParams<{ file_id: string }>();
@@ -22,9 +23,14 @@ function Chat() {
       { method: "POST" }
     );
     const data = await res.json();
+    // CHANGED: show the answer text and chart instead of raw JSON
     setMessages((prev) => [
       ...prev,
-      { role: "assistant", text: JSON.stringify(data) },
+      {
+        role: "assistant",
+        text: data.answer ?? data.detail ?? "Something went wrong.",
+        chart: data.chart,
+      },
     ]);
   }
 
@@ -57,7 +63,15 @@ function Chat() {
                 key={i}
                 className="rounded-lg border border-[#26262E] bg-[#121216] p-5 text-sm leading-relaxed"
               >
-                {m.text}
+                {/* CHANGED: text plus optional chart image */}
+                <p>{m.text}</p>
+                {m.chart && (
+                  <img
+                    src={`data:image/png;base64,${m.chart}`}
+                    alt="chart"
+                    className="mt-4 rounded-md bg-[#0A0A0C] p-4"
+                  />
+                )}
               </div>
             )
           )}
