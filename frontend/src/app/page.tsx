@@ -8,21 +8,34 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   async function handleUpload() {
     if (!file) return;
     setUploading(true);
+    setError("");
 
-    const formData = new FormData();
-    formData.append("file", file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const res = await fetch("http://localhost:8000/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    router.push(`/c/${data.file_id}`);
+      const res = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.detail ?? "Upload failed.");
+        return;
+      }
+      router.push(`/c/${data.file_id}`);
+    } catch {
+      setError("Can't reach the backend. Is it running?");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -77,6 +90,7 @@ export default function Home() {
       >
         {uploading ? "Uploading..." : "Analyze"}
       </button>
+      {error && <p className="text-sm text-[#EF4444]">{error}</p>}
     </main>
   );
 }
