@@ -1,14 +1,12 @@
-import io
-import re
 import uuid
-import base64
 
-import matplotlib
-matplotlib.use("Agg")  # render to memory, no GUI window
-import matplotlib.pyplot as plt
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+
+from charts import bar_chart, hist_chart
+from nlp import detect_op, match_columns
+from store import clean_numeric, filenames, storage
 
 app = FastAPI()
 
@@ -19,69 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-storage: dict[str, pd.DataFrame] = {}
-
-# dark theme so charts match the UI cards
-plt.rcParams.update({
-    "figure.facecolor": "#121216", "axes.facecolor": "#121216",
-    "axes.edgecolor": "#26262E", "axes.labelcolor": "#9494A0",
-    "text.color": "#F4F4F6", "xtick.color": "#9494A0", "ytick.color": "#9494A0",
-    "grid.color": "#1A1A20", "grid.linestyle": "--", "figure.dpi": 150,
-})
-
-# keyword -> pandas aggregation
-OPS = {
-    "average": "mean", "avg": "mean", "mean": "mean",
-    "total": "sum", "sum": "sum",
-    "maximum": "max", "max": "max", "highest": "max",
-    "minimum": "min", "min": "min", "lowest": "min",
-    "count": "count",
-}
-
-
-# ---------- helpers ----------
-
-def words(text: str) -> list[str]:
-    return [w for w in re.split(r"[^a-z0-9]+", text.lower()) if w]
-
-
-def detect_op(q: str):
-    for w in words(q):
-        if w in OPS:
-            return OPS[w]
-    return None
-
-
-def match_columns(q: str, columns) -> list[str]:
-    q_words = set(words(q)) - set(OPS)  # ignore operation words
-    return [c for c in columns if any(w in q_words for w in words(c))]
-
-
-def to_base64(fig) -> str:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode()
-
-
-def bar_chart(series, title: str) -> str:
-    fig, ax = plt.subplots(figsize=(6, 3.5))
-    series.plot(kind="bar", ax=ax, color="#6366F1")
-    ax.set_title(title, fontsize=10)
-    ax.grid(axis="y")
-    plt.xticks(rotation=30, ha="right")
-    return to_base64(fig)
-
-
-def hist_chart(values, title: str) -> str:
-    fig, ax = plt.subplots(figsize=(6, 3.5))
-    ax.hist(values.dropna(), bins=10, color="#6366F1")
-    ax.set_title(title, fontsize=10)
-    ax.grid(axis="y")
-    return to_base64(fig)
-
-
-# ---------- endpoints ----------
 
 @app.get("/health")
 def health_check():
@@ -90,12 +25,22 @@ def health_check():
 
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
-    df = pd.read_csv(file.file)
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only .csv files are supported.")
+    try:
+        df = pd.read_csv(file.file)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="Could not read this file as a CSV.")
+    finally:
+        file.file.close()
+    if df.empty:
+        raise HTTPException(status_code=400, detail="The CSV has no data rows.")
+
     file_id = str(uuid.uuid4())
-    storage[file_id] = df
+    storage[file_id] = clean_numeric(df)
+    filenames[file_id] = file.filename
     rows, columns = df.shape
-    file.file.close()
-    return {"file_id": file_id, "rows": rows, "columns": columns}
+    return {"file_id": file_id, "filename": file.filename, "rows": rows, "columns": columns}
 
 
 @app.post("/query/{file_id}")
