@@ -1,101 +1,87 @@
 "use client";
 
-import TopBar from "@/components/TopBar";
-import Sidebar from "@/components/Sidebar";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { LuArrowUp } from "react-icons/lu";
+import TopBar from "@/components/TopBar";
+import PromptBar from "@/components/PromptBar";
+import LoadingState from "@/components/LoadingState";
+import StreamingText from "@/components/StreamingText";
 
-// CHANGED: added optional chart
 type Message = { role: "user" | "assistant"; text: string; chart?: string };
 
 function Chat() {
   const { file_id } = useParams<{ file_id: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
 
-  async function handleSend() {
-    if (!input.trim()) return;
-    const question = input;
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  async function handleSend(question: string) {
     setMessages((prev) => [...prev, { role: "user", text: question }]);
-    setInput("");
+    setLoading(true);
 
-    const res = await fetch(
-      `http://localhost:8000/query/${file_id}?question=${encodeURIComponent(question)}`,
-      { method: "POST" },
-    );
-    const data = await res.json();
-    // CHANGED: show the answer text and chart instead of raw JSON
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        text: data.answer ?? data.detail ?? "Something went wrong.",
-        chart: data.chart,
-      },
-    ]);
+    try {
+      const res = await fetch(
+        `http://localhost:8000/query/${file_id}?question=${encodeURIComponent(question)}`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: data.answer ?? data.detail ?? "Something went wrong.",
+          chart: data.chart,
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "Can't reach the backend. Is it running?" },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="flex h-screen bg-canvas text-primary">
-      <Sidebar open={sidebarOpen} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar
-          filename={file_id.slice(0, 8)}
-          onToggleSidebar={() => setSidebarOpen((o) => !o)}
-        />
+    <>
+      <TopBar filename={file_id.slice(0, 8)} />
 
-        {/* msgs */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
-            {messages.map((m, i) =>
-              m.role === "user" ? (
-                <div key={i} className="flex justify-end">
-                  <div className="max-w-[80%] rounded-lg bg-[#1A1A20] px-4 py-2 text-sm">
-                    {m.text}
-                  </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
+          {messages.map((m, i) =>
+            m.role === "user" ? (
+              <div key={i} className="flex justify-end">
+                <div className="max-w-[80%] rounded-lg bg-elevated px-4 py-2 text-sm">
+                  {m.text}
                 </div>
-              ) : (
-                <div
-                  key={i}
-                  className="rounded-lg border border-[#26262E] bg-[#121216] p-5 text-sm leading-relaxed"
-                >
-                  {/* CHANGED: text plus optional chart image */}
-                  <p>{m.text}</p>
-                  {m.chart && (
-                    <img
-                      src={`data:image/png;base64,${m.chart}`}
-                      alt="chart"
-                      className="mt-4 rounded-md bg-[#0A0A0C] p-4"
-                    />
-                  )}
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-
-        {/* input bar */}
-        <div className="mx-auto w-full max-w-2xl px-4 pb-6">
-          <div className="flex items-center gap-2 rounded-lg border border-[#26262E] bg-[#1A1A20] px-3 py-2 focus-within:border-[#6366F1]">
-            <input
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-[#5E5E6A]"
-              placeholder="Ask about your data..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            />
-            <button
-              onClick={handleSend}
-              className="rounded-md bg-[#6366F1] p-1.5 text-white"
-            >
-              <LuArrowUp className="h-4 w-4" />
-            </button>
-          </div>
+              </div>
+            ) : (
+              <div key={i}>
+                <StreamingText text={m.text} />
+                {m.chart && (
+                  <img
+                    src={`data:image/png;base64,${m.chart}`}
+                    alt="chart"
+                    className="mt-4 rounded-lg border border-subtle bg-surface p-4"
+                  />
+                )}
+              </div>
+            )
+          )}
+          {loading && <LoadingState surfer />}
+          <div ref={endRef} />
         </div>
       </div>
-    </div>
+
+      <div className="mx-auto w-full max-w-2xl px-4 pb-6">
+        <PromptBar onSend={handleSend} disabled={loading} />
+      </div>
+    </>
   );
 }
 
