@@ -40,7 +40,7 @@ export default function Sidebar({ open }: { open: boolean }) {
             href="/"
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-secondary transition-colors hover:bg-elevated hover:text-primary"
           >
-            <LuPlus className="h-[18px] w-[18px]" />
+            <LuPlus className="h-4.5 w-4.5" />
             New analysis
           </Link>
         </nav>

@@ -48,7 +48,7 @@ export default function PromptBar({
         }}
         placeholder={placeholder}
         aria-label="Question"
-        className="min-h-7 flex-1 resize-none bg-transparent px-2 py-[5px] text-[13px] leading-[18px] outline-none placeholder:text-muted"
+        className="min-h-7 flex-1 resize-none bg-transparent px-2 py-1.25 text-[13px] leading-4.5 outline-none placeholder:text-muted"
       />
       <button
         type="button"

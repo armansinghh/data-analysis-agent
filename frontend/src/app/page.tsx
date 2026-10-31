@@ -66,9 +66,9 @@ export default function Home() {
             }`}
           >
             {uploading ? (
-              <LuFileSpreadsheet className="h-[18px] w-[18px] text-accent" />
+              <LuFileSpreadsheet className="h-4.5 w-4.5 text-accent" />
             ) : (
-              <LuUpload className="h-[18px] w-[18px] text-secondary" />
+              <LuUpload className="h-4.5 w-4.5 text-secondary" />
             )}
             <span className="font-mono text-xs text-secondary">
               {uploading ? "Reading file..." : "Drop a .csv here or click to browse"}
