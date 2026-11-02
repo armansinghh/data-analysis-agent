@@ -52,7 +52,7 @@ function Chat() {
       <TopBar filename={file_id.slice(0, 8)} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
+        <div className="mx-auto max-w-2xl space-y-6 px-0 py-6">
           {messages.map((m, i) =>
             m.role === "user" ? (
               <div key={i} className="flex justify-end">
@@ -78,7 +78,7 @@ function Chat() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl px-4 pb-6">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-6">
         <PromptBar onSend={handleSend} disabled={loading} />
       </div>
     </>
