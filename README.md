@@ -13,10 +13,11 @@ analysing a csv usually means knowing pandas, sql or excel formulas, and most pe
 ## Features
 1. upload any csv (attendance, marks, event registrations, surveys etc.)
 2. ask questions in plain english, no code or formulas
-3. answers come back as a direct answer or a chart
-4. shows what pandas operation actually ran, nothing hidden
-5. hallucination check before output is displayed
-6. open source, runs offline once set up
+3. answers come back as text + a chart
+4. every answer comes with the pandas operation that ran (backend sends it, showing it in the ui is next)
+5. asks you to clarify when a question could mean more than one column, instead of guessing
+6. hallucination check before output is displayed (planned, sem 4)
+7. open source, runs on your machine
 
 > [!NOTE]
 > not all of this is built yet, check the status section below for what actually works right now
@@ -25,37 +26,45 @@ analysing a csv usually means knowing pandas, sql or excel formulas, and most pe
 | Tool | Role | Why |
 | --- | --- | --- |
 | Python + Pandas | data processing | standard for this, best documented |
-| LangChain | turns the question into a data operation | abstracts the annoying parts |
-| BERT (HuggingFace) | understanding what the user actually wants | free, runs locally, good enough here |
-| Matplotlib + Seaborn | charts | clean + well documented (plotly maybe in v2) |
 | FastAPI | backend | cleaner and faster than flask |
-| Streamlit | UI | working interface fast, no frontend overhead |
+| Matplotlib | charts | clean + well documented (plotly maybe in v2) |
+| Next.js + TypeScript + Tailwind | frontend | separate from the backend so each can be built and tested on its own |
+| LangChain + BERT (HuggingFace) | question understanding | planned for sem 4, free and runs locally |
 
 ## How it works
 ```
-upload csv -> type question -> LangChain interprets it -> BERT figures out intent
--> Pandas runs the analysis -> Matplotlib/Seaborn draws it
--> hallucination detector verifies -> Streamlit shows it
+upload csv -> type question -> parse the question (keywords for now)
+-> pandas runs the analysis -> matplotlib draws the chart -> next.js shows it
 ```
 
-the verification step is the interesting bit. most NL-to-data tools treat the LLM output as ground truth - this one doesn't. it compares what was asked vs what was actually computed, and only then shows the result. no standard benchmark exists for this yet, so figuring out how to evaluate it is part of the project too.
+right now the question parsing is simple keyword matching (finds average / total / max / min / count, then matches your words to column names). langchain + bert replace it in sem 4, and the hallucination detector goes between "pandas runs" and "shows it" (the interesting bit, not built yet).
 
 ## Run it locally
-what's runnable right now is just the backend:
+backend (from the `backend/` folder):
 
 ```bash
-pip install fastapi uvicorn pandas python-multipart
-uvicorn main:app --reload
+pip install "fastapi[standard]" pandas matplotlib
+fastapi dev main.py
 ```
 
-then open `http://127.0.0.1:8000/docs` to try the endpoints.
+frontend (from the `frontend/` folder, in another terminal):
+
+```bash
+npm install
+npm run dev
+```
+
+open `http://localhost:3000`. backend docs are at `http://127.0.0.1:8000/docs`.
 
 ## Status
-**in progress (sem 3 part).** right now there's a FastAPI backend with:
+**in progress (sem 3 done, sem 4 next).** what works right now:
 - `GET /health` - checks the server is up
-- `POST /upload` - takes a csv, returns filename + rows + columns
+- `POST /upload` - takes a csv (rejects bad files), cleans numeric columns like "$1,200", returns file id + filename + rows + columns
+- `GET /info/{file_id}` - filename, rows, columns of an uploaded file
+- `POST /query/{file_id}` - average / total / max / min / count, optional group by, asks when a question is ambiguous, returns answer + chart + the pandas op
+- next.js upload page and chat page
 
-**still to build:** streamlit UI, NL querying, charts, langchain + bert integration, hallucination detection layer.
+**still to build:** showing the pandas op in the ui, filters / top-n questions, saving datasets (they live in memory and vanish when the server restarts), langchain + bert, hallucination detection layer.
 
 ## QnA
 
